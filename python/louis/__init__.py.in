@@ -36,6 +36,8 @@ function for information about how liblouis searches for these tables.
 @author: Leonard de Ruijter (Babbage B.V.) <alderuijter@gmail.com>
 """
 
+
+from __future__ import unicode_literals
 from ctypes import *
 import atexit
 import sys
