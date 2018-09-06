@@ -43,17 +43,21 @@ import sys
 # Some general utility functions
 def _createTablesString(tablesList):
     """Creates a tables string for liblouis calls"""
-    return b",".join([x.encode("ASCII") if isinstance(x, str) else bytes(x) for x in tablesList])
+    return b",".join([x.encode("ASCII") if isinstance(x, encodableType) else bytesType(x) for x in tablesList])
 
 def _createTypeformbuf(length, typeform=None):
     """Creates a typeform buffer for liblouis calls"""
     return (c_ushort*length)(*typeform) if typeform else (c_ushort*length)()
 
-createEncodedByeString = None
 if sys.version_info[0] == 2:
-    createEncodedByeString = lambda x: unicode(x).encode(conversionEncoding)
-else:
-    createEncodedByeString = lambda x: str(x).encode(conversionEncoding)
+    stringType = unicode
+    bytesType = str
+    encodableType = basestring
+else: # sys.version_info[0] == 3
+    stringType = str
+    bytestype = bytes
+    encodableType = str
+createEncodedByeString = lambda x: stringType(x).encode(conversionEncoding)
 
 try:
     # Native win32
@@ -337,7 +341,7 @@ def compileString(tableList, inString):
     @see: lou_compileString in the liblouis documentation
     """
     tablesString = _createTablesString(tableList)
-    inBytes = inString.encode("ASCII") if isinstance(inString, str) else bytes(inString)
+    inBytes = inString.encode("ASCII") if isinstance(inString, encodableType) else bytesType(inString)
     if not liblouis.lou_compileString(tablesString, inString):
         raise RuntimeError("Can't compile entry: tables %s, inString %s"%(tableList, inString))
 
@@ -368,6 +372,24 @@ def dotsToChar(tableList, inbuf):
     if not liblouis.lou_dotsToChar(tablesString, inbuf, outbuf, len, 0):
         raise RuntimeError("Can't convert dots to char: tables %s, inbuf %s"%(tableList, inbuf))
     return outbuf.raw[:outlen.value * wideCharBytes].decode(conversionEncoding)
+
+def charToDots(tableList, inbuf):
+    """"Convert a string of chars to a string of dot patterns.
+    @param tableList: A list of translation tables.
+    @type tableList: list of str
+    @param inbuf: a string of characters.
+    @type inbuf: str
+    @raise RuntimeError: If a complete conversion could not be done.
+    @see: lou_charToDOts in the liblouis documentation
+    """
+    tablesString = _createTablesString(tableList)
+    inbuf = createEncodedByeString(inbuf)
+    len = c_int(len(inbuf) // wideCharBytes)
+    outbuf = create_string_buffer(len.value * wideCharBytes)
+    if not liblouis.lou_charToDots(tablesString, inbuf, outbuf, len, 0):
+        raise RuntimeError("Can't convert char to dots: tables %s, inbuf %s"%(tableList, inbuf))
+    return outbuf.raw[:outlen.value * wideCharBytes].decode(conversionEncoding)
+
 
 #{ Typeforms
 plain_text = 0x0000
