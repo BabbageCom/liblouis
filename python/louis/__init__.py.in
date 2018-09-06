@@ -108,12 +108,10 @@ liblouis.lou_charToDots.argtypes = (
 
 liblouis.lou_readCharFromFile.argtypes = (c_char_p, POINTER(c_int))
 
-liblouis.lou_compileString.argtypes = (c_char_p, c_char_p)
-
 logcallback = _functype(c_void_p, c_int, c_char_p)
 
-louis.lou_registerLogCallback.restype = c_void_p
-louis.lou_registerLogCallback.argtypes = (POINTER(logcallback),)
+liblouis.lou_registerLogCallback.restype = c_void_p
+liblouis.lou_registerLogCallback.argtypes = (POINTER(logcallback),)
 
 #{ Module Configuration
 #: Specifies the charSize (in bytes) used by liblouis.
@@ -354,6 +352,23 @@ def getTypeformForEmphClass(tableList, emphClass):
     tablesString = _createTablesString(tableList)
     return liblouis.lou_getTypeformForEmphClass(tablesString, emphClass)
 
+def dotsToChar(tableList, inbuf):
+    """"Convert a string of dot patterns to a string of chars.
+    @param tableList: A list of translation tables.
+    @type tableList: list of str
+    @param inbuf: a string of dot patterns, either in liblouis format or Unicode braille.
+    @type inbuf: str
+    @raise RuntimeError: If a complete conversion could not be done.
+    @see: lou_dotsToChar in the liblouis documentation
+    """
+    tablesString = _createTablesString(tableList)
+    inbuf = createEncodedByeString(inbuf)
+    len = c_int(len(inbuf) // wideCharBytes)
+    outbuf = create_string_buffer(len.value * wideCharBytes)
+    if not liblouis.lou_dotsToChar(tablesString, inbuf, outbuf, len, 0):
+        raise RuntimeError("Can't convert dots to char: tables %s, inbuf %s"%(tableList, inbuf))
+    return outbuf.raw[:outlen.value * wideCharBytes].decode(conversionEncoding)
+
 #{ Typeforms
 plain_text = 0x0000
 emph_1 = comp_emph_1 = italic = 0x0001
@@ -382,13 +397,13 @@ partialTrans = 256
 #}
 
 #{ logLevels
-	LOG_ALL = 0
-	LOG_DEBUG = 10000
-	LOG_INFO = 20000
-	LOG_WARN = 30000
-	LOG_ERROR = 40000
-	LOG_FATAL = 50000
-	LOG_OFF = 60000
+LOG_ALL = 0
+LOG_DEBUG = 10000
+LOG_INFO = 20000
+LOG_WARN = 30000
+LOG_ERROR = 40000
+LOG_FATAL = 50000
+LOG_OFF = 60000
 #}
 
 if __name__ == '__main__':
